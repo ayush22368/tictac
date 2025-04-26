@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Tic-Tac-Toe AI (Adjusted)</title>
+    <style>
+        /* Basic Reset & Body Styling */
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+        }
+
+        html {
+            touch-action: manipulation; /* Prevent double-tap zoom */
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            color: #333;
+            padding: 15px; /* Slightly reduced padding */
+            overscroll-behavior: none; /* Prevent pull-to-refresh */
+        }
+
+        /* Game Container */
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #fff;
+            padding: 20px 25px; /* Adjusted padding */
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%; /* Take full width available */
+        }
+
+        h1 {
+            margin-bottom: 15px; /* Reduced margin */
+            color: #1a73e8;
+            text-align: center;
+            font-size: 1.8rem; /* Slightly smaller on mobile */
+        }
+
+        /* Difficulty Selection */
+        .difficulty-selector {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .difficulty-selector label {
+            font-weight: bold;
+            margin-right: 5px;
+            font-size: 0.95rem;
+        }
+
+        .difficulty-selector select {
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+        .difficulty-selector select:focus {
+             border-color: #1a73e8;
+        }
+
+        /* Game Board */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px; /* Slightly smaller gap */
+            width: 100%;
+            max-width: 320px; /* Adjusted max size */
+            aspect-ratio: 1 / 1;
+            margin-bottom: 15px;
+            position: relative; /* For pointer-events overlay */
+        }
+
+        .cell {
+            background-color: #e8eaf6;
+            border: 1px solid #c5cae9; /* Slightly thinner border */
+            border-radius: 8px; /* Slightly less rounded */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(2.5rem, 15vw, 4rem); /* Responsive font size */
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            user-select: none;
+            line-height: 1; /* Prevent extra spacing */
+        }
+
+        .cell:hover:not(.occupied):not(.game-over) {
+            background-color: #dcdcff;
+        }
+
+        .cell.x { color: #e53935; }
+        .cell.o { color: #1e88e5; }
+        .cell.occupied, .cell.game-over { cursor: not-allowed; }
+
+        /* Status Display */
+        .status {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            min-height: 1.4em;
+            text-align: center;
+            color: #555;
+        }
+        .status.win { color: #2e7d32; }
+        .status.draw { color: #f57c00; }
+
+        /* Reset Button */
+        .reset-button {
+            padding: 10px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #fff;
+            background-color: #1a73e8;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .reset-button:hover { background-color: #155ab6; }
+        .reset-button:active { transform: scale(0.98); }
+
+        /* Winning Line Highlight */
+        .winning-cell {
+            background-color: #a5d6a7 !important;
+            color: #1b5e20 !important;
+        }
+
+         /* Overlay to disable clicks during computer turn/game over */
+        .board.disabled::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            /* background: rgba(255, 255, 255, 0.1); Semi-transparent overlay */
+            z-index: 10;
+            cursor: not-allowed;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Tic-Tac-Toe</h1>
+
+        <div class="difficulty-selector">
+            <label for="difficulty">Difficulty:</label>
+            <select id="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+
+        <div class="status" id="status">Player X's turn</div>
+
+        <div class="board" id="board">
+            <!-- Cells will be added dynamically if needed, but static is fine too -->
+            <div class="cell" data-cell-index="0"></div>
+            <div class="cell" data-cell-index="1"></div>
+            <div class="cell" data-cell-index="2"></div>
+            <div class="cell" data-cell-index="3"></div>
+            <div class="cell" data-cell-index="4"></div>
+            <div class="cell" data-cell-index="5"></div>
+            <div class="cell" data-cell-index="6"></div>
+            <div class="cell" data-cell-index="7"></div>
+            <div class="cell" data-cell-index="8"></div>
+        </div>
+
+        <button class="reset-button" id="resetButton">Restart Game</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const boardElement = document.getElementById('board');
+            const cells = document.querySelectorAll('.cell');
+            const statusElement = document.getElementById('status');
+            const resetButton = document.getElementById('resetButton');
+            const difficultySelector = document.getElementById('difficulty');
+
+            const playerX = 'X';
+            const playerO = 'O'; // Computer
+            let currentPlayer = playerX;
+            let boardState = Array(9).fill(''); // More concise initialization
+            let gameActive = true;
+            let currentDifficulty = difficultySelector.value;
+
+            // Configuration for AI adjustments
+            const MEDIUM_AI_BLOCK_PROBABILITY = 0.75; // 75% chance Medium AI blocks
+            const HARD_AI_MISTAKE_PROBABILITY = 0.15; // 15% chance Hard AI makes a random move
+
+            const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+                [0, 4, 8], [2, 4, 6]             // Diagonals
+            ];
+
+            // --- Utility Functions ---
+            const getEmptyCells = (board) => {
+                return board.map((cell, index) => cell === '' ? index : null).filter(index => index !== null);
+            };
+
+            const checkWinPossibility = (board, player) => {
+                for (const combo of winningCombinations) {
+                    const [a, b, c] = combo;
+                    if (board[a] === player && board[b] === player && board[c] === '') return c;
+                    if (board[a] === player && board[c] === player && board[b] === '') return b;
+                    if (board[b] === player && board[c] === player && board[a] === '') return a;
+                }
+                return null;
+            };
+
+             // Check if a player has won on the given board state
+             const checkWinner = (board, player) => {
+                 return winningCombinations.some(combo => {
+                     return combo.every(index => board[index] === player);
+                 });
+             };
+
+            // --- Game Logic Functions ---
+
+            const handleCellClick = (event) => {
+                const clickedCell = event.target;
+                // Check if the clicked element is actually a cell
+                if (!clickedCell.classList.contains('cell')) return;
+
+                const clickedCellIndex = parseInt(clickedCell.getAttribute('data-cell-index'));
+
+                // Ignore click if cell is already filled, game is over, or it's not player's turn
+                if (boardState[clickedCellIndex] !== '' || !gameActive || currentPlayer !== playerX) {
+                    return;
+                }
+
+                // Player's move
+                if (makeMove(clickedCellIndex, playerX)) {
+                     // Check result after player's move
+                    if (!checkResult() && gameActive) {
+                        // If game is still active, switch to computer's turn
+                        switchPlayer();
+                        // Add a small delay for computer 'thinking' time
+                        disableBoard(); // Disable board immediately
+                        setTimeout(computerTurn, 500);
+                    }
+                }
+            };
+
+            const makeMove = (index, player) => {
+                if (boardState[index] === '' && gameActive) {
+                    boardState[index] = player;
+                    const cell = cells[index];
+                    cell.textContent = player;
+                    cell.classList.add(player.toLowerCase()); // Add 'x' or 'o' class
+                    cell.classList.add('occupied');
+                    return true; // Move was successful
+                }
+                return false; // Move was not possible
+            };
+
+            const switchPlayer = () => {
+                currentPlayer = playerO; // Always switch to computer after player
+                updateStatusDisplay();
+            };
+
+            const checkResult = () => {
+                let roundWon = false;
+                let winningLine = null;
+                const winner = currentPlayer; // Check for the player who just moved
+
+                for (let i = 0; i < winningCombinations.length; i++) {
+                    const winCondition = winningCombinations[i];
+                    const [a, b, c] = winCondition;
+                    if (boardState[a] === winner && boardState[b] === winner && boardState[c] === winner) {
+                        roundWon = true;
+                        winningLine = winCondition;
+                        break;
+                    }
+                }
+
+                if (roundWon) {
+                    handleWin(winner, winningLine);
+                    return true; // Game ended with a win
+                }
+
+                // Check for Draw (if no winner and board is full)
+                if (!boardState.includes('')) {
+                    handleDraw();
+                    return true; // Game ended with a draw
+                }
+
+                return false; // Game continues
+            };
+
+            const handleWin = (winner, line) => {
+                gameActive = false;
+                statusElement.textContent = `${winner === playerX ? 'Player X' : 'Computer O'} Wins!`;
+                statusElement.classList.add('win');
+                disableBoard();
+                cells.forEach(cell => cell.classList.add('game-over')); // Add visual cue
+
+                if (line) {
+                    line.forEach(index => cells[index].classList.add('winning-cell'));
+                }
+            };
+
+            const handleDraw = () => {
+                gameActive = false;
+                statusElement.textContent = 'Game Ended in a Draw!';
+                statusElement.classList.add('draw');
+                disableBoard();
+                 cells.forEach(cell => cell.classList.add('game-over'));
+            };
+
+             const disableBoard = () => {
+                 // boardElement.style.pointerEvents = 'none'; // Direct style manipulation
+                 boardElement.classList.add('disabled'); // Add class for overlay/styling
+             };
+
+             const enableBoard = () => {
+                 // boardElement.style.pointerEvents = 'auto';
+                 boardElement.classList.remove('disabled');
+             };
+
+
+            const updateStatusDisplay = () => {
+                if (!gameActive) return; // Don't update if game is over
+
+                const message = (currentPlayer === playerX) ? "Player X's turn" : "Computer O's turn";
+                statusElement.textContent = message;
+                // Clear win/draw styles if game is ongoing
+                statusElement.classList.remove('win', 'draw');
+            };
+
+            const resetGame = () => {
+                boardState = Array(9).fill('');
+                gameActive = true;
+                currentPlayer = playerX; // Player X always starts
+                statusElement.textContent = "Player X's turn";
+                statusElement.classList.remove('win', 'draw');
+                enableBoard(); // Re-enable board
+
+                cells.forEach(cell => {
+                    cell.textContent = '';
+                    cell.classList.remove('x', 'o', 'occupied', 'game-over', 'winning-cell');
+                });
+                console.log(`--- Game reset. Difficulty: ${currentDifficulty} ---`);
+            };
+
+            const handleDifficultyChange = () => {
+                 currentDifficulty = difficultySelector.value;
+                 resetGame(); // Restart the game when difficulty changes
+            }
+
+            // --- Computer AI Logic ---
+
+            const computerTurn = () => {
+                if (currentPlayer !== playerO || !gameActive) {
+                     if (gameActive) enableBoard(); // Re-enable if turn skipped unexpectedly
+                    return; // Only proceed if it's O's turn and game is active
+                }
+
+                // AI determines the move
+                const moveIndex = getComputerMove(boardState, currentDifficulty);
+
+                // Apply the move after a short visual delay
+                // Use requestAnimationFrame for smoother visual updates if available
+                 const executeMove = () => {
+                     if (moveIndex !== null && gameActive) {
+                         if (makeMove(moveIndex, playerO)) {
+                             if (!checkResult()) {
+                                 // Switch back to player IF game didn't end
+                                 currentPlayer = playerX;
+                                 updateStatusDisplay();
+                                 if (gameActive) enableBoard(); // Re-enable board for player
+                             }
+                             // If checkResult ended the game, board remains disabled by handleWin/handleDraw
+                         } else {
+                             // Failed to make move (shouldn't happen if logic is right)
+                             console.error("Computer failed to make move on index:", moveIndex);
+                              if (gameActive) enableBoard();
+                         }
+                     } else if (gameActive) {
+                          // Fallback if getComputerMove returned null unexpectedly (e.g., no empty cells left but not draw?)
+                         console.error("Computer couldn't find a valid move index.");
+                         if(!checkResult()) { // Double check for win/draw
+                             // If still no result, something is wrong, but enable board for player maybe?
+                             currentPlayer = playerX;
+                             updateStatusDisplay();
+                             enableBoard();
+                         }
+                     }
+                      // If game ended during computer's move, board should remain disabled.
+                 };
+
+                 // Use setTimeout for the delay, can wrap executeMove in requestAnimationFrame if desired
+                 setTimeout(executeMove, 150); // Slightly shorter delay for move visibility
+            };
+
+
+            const getComputerMove = (currentBoard, difficulty) => {
+                const emptyCells = getEmptyCells(currentBoard);
+                if (emptyCells.length === 0) return null; // No moves possible
+
+                // --- Difficulty Levels ---
+                switch (difficulty) {
+                    case 'easy':
+                        return easyAI(emptyCells);
+                    case 'medium':
+                        return mediumAI_Adjusted(currentBoard, emptyCells);
+                    case 'hard':
+                        // *** Adjusted Hard AI: Chance to make a mistake ***
+                        if (Math.random() < HARD_AI_MISTAKE_PROBABILITY) {
+                            console.log("Hard AI: Making a random mistake!");
+                            return easyAI(emptyCells); // Make a random move instead
+                        } else {
+                             console.log("Hard AI: Calculating optimal move (Minimax)");
+                            // Use a copy of the board for Minimax simulation
+                            const boardCopy = [...currentBoard];
+                            const bestMove = minimax(boardCopy, playerO);
+                            return bestMove.index;
+                        }
+                    default: // Default to medium
+                        return mediumAI_Adjusted(currentBoard, emptyCells);
+                }
+            };
+
+
+            // --- Specific AI Strategies ---
+
+            const easyAI = (emptyCells) => {
+                console.log("Easy AI: Making random move");
+                const randomIndex = Math.floor(Math.random() * emptyCells.length);
+                return emptyCells[randomIndex];
+            };
+
+            const mediumAI_Adjusted = (board, emptyCells) => {
+                // 1. Check if Computer (O) can win
+                let winningMove = checkWinPossibility(board, playerO);
+                if (winningMove !== null) {
+                    console.log("Medium AI (Adjusted): Going for the win");
+                    return winningMove;
+                }
+
+                // 2. Check if Player (X) can win, and probabilistically block
+                let blockingMove = checkWinPossibility(board, playerX);
+                if (blockingMove !== null) {
+                    if (Math.random() < MEDIUM_AI_BLOCK_PROBABILITY) {
+                         console.log(`Medium AI (Adjusted): Blocking player win (Success - ${MEDIUM_AI_BLOCK_PROBABILITY*100}%)`);
+                         return blockingMove;
+                    } else {
+                         console.log(`Medium AI (Adjusted): Decided *not* to block (Failure - ${100-MEDIUM_AI_BLOCK_PROBABILITY*100}%)`);
+                         // Proceed to other strategies if not blocking
+                    }
+                }
+
+                // 3. Try to take the center (index 4)
+                if (board[4] === '') {
+                     console.log("Medium AI (Adjusted): Taking center");
+                    return 4;
+                }
+
+                // 4. Take any other available spot randomly (no corner/side preference)
+                console.log("Medium AI (Adjusted): Taking random available spot");
+                // Ensure we use the *currently* available spots, not just the initial list passed in
+                const currentEmptyCells = getEmptyCells(board);
+                 if (currentEmptyCells.length > 0) {
+                    return currentEmptyCells[Math.floor(Math.random() * currentEmptyCells.length)];
+                 } else {
+                    return null; // Should only happen if board is full, handled earlier
+                 }
+            };
+
+
+            // --- Minimax Algorithm (for Hard AI, potentially skipped) ---
+            const minimax = (newBoard, player) => {
+                 const availSpots = getEmptyCells(newBoard);
+
+                 // Base cases: check for terminal states
+                 if (checkWinner(newBoard, playerX)) return { score: -10 };
+                 if (checkWinner(newBoard, playerO)) return { score: 10 };
+                 if (availSpots.length === 0) return { score: 0 }; // Draw
+
+                 const moves = [];
+                 for (let i = 0; i < availSpots.length; i++) {
+                     const move = {};
+                     move.index = availSpots[i];
+                     newBoard[availSpots[i]] = player; // Make the move on the temporary board
+
+                     // Recursively call minimax for the opponent
+                     if (player === playerO) { // AI is maximizing player
+                         const result = minimax(newBoard, playerX); // Call for minimizing player
+                         move.score = result.score;
+                     } else { // Human is minimizing player
+                         const result = minimax(newBoard, playerO); // Call for maximizing player
+                         move.score = result.score;
+                     }
+
+                     // Undo the move
+                     newBoard[availSpots[i]] = '';
+                     moves.push(move);
+                 }
+
+                 // Choose the best move from the moves list
+                 let bestMoveIndex;
+                 if (player === playerO) { // Maximizing player (Computer O)
+                     let bestScore = -Infinity;
+                     for (let i = 0; i < moves.length; i++) {
+                         if (moves[i].score > bestScore) {
+                             bestScore = moves[i].score;
+                             bestMoveIndex = i;
+                         }
+                         // Add slight randomness for variety among equally good moves (optional)
+                         else if (moves[i].score === bestScore) {
+                             if (Math.random() < 0.3) { // ~30% chance to switch to another equally good move
+                                 bestMoveIndex = i;
+                             }
+                         }
+                     }
+                 } else { // Minimizing player (Human X)
+                     let bestScore = Infinity;
+                     for (let i = 0; i < moves.length; i++) {
+                         if (moves[i].score < bestScore) {
+                             bestScore = moves[i].score;
+                             bestMoveIndex = i;
+                         }
+                         // Add slight randomness for variety among equally good moves (optional)
+                          else if (moves[i].score === bestScore) {
+                             if (Math.random() < 0.3) {
+                                 bestMoveIndex = i;
+                             }
+                         }
+                     }
+                 }
+
+                 // Return the best move object {index, score}
+                 return moves[bestMoveIndex];
+             };
+
+
+            // --- Event Listeners ---
+            // Use event delegation on the board for potentially better performance
+            boardElement.addEventListener('click', handleCellClick);
+            // Add touchstart for mobile responsiveness, prevent default to avoid potential zoom/scroll/double-tap issues
+            boardElement.addEventListener('touchstart', (e) => {
+                 e.preventDefault();
+                 handleCellClick(e);
+            }, { passive: false });
+
+
+            resetButton.addEventListener('click', resetGame);
+            resetButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                resetGame();
+            }, { passive: false });
+
+            difficultySelector.addEventListener('change', handleDifficultyChange);
+
+            // --- Initial Setup ---
+            resetGame(); // Initialize the game state on load
+        });
+    </script>
+
+</body>
+</html>
